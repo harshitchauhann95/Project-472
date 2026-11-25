@@ -271,7 +271,7 @@ Project-472/
 ---
 
 ## 👥 Authors
-* **Harshit Chauhan** (Lead Architecture & Implementation)
+* **Harshit Chauhan**
 * **Vishnu Kumar Jha**
 * **Alok Kumar**
 
