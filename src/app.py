@@ -119,6 +119,8 @@ CREW_ALIAS_MAP = {
     "maintenance": "general_maintenance",
 }
 
+LIVE_TICKETS_PATH = "data/processed/live_tickets.json"
+
 
 def normalize_category(cat: str) -> str:
     cleaned = str(cat or "").strip().lower().replace(" ", "_")
@@ -174,6 +176,27 @@ def render_flash():
         st.session_state["flash_banner"] = None
 
 
+def save_tickets_to_disk(tickets: list):
+    try:
+        os.makedirs(os.path.dirname(LIVE_TICKETS_PATH), exist_ok=True)
+        with open(LIVE_TICKETS_PATH, "w", encoding="utf-8") as f:
+            json.dump(tickets, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def load_tickets_from_disk():
+    if os.path.exists(LIVE_TICKETS_PATH):
+        try:
+            with open(LIVE_TICKETS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list) and len(data) > 0:
+                return data
+        except Exception:
+            pass
+    return None
+
+
 @st.cache_resource
 def load_system_engines():
     priority_engine = PriorityEngine()
@@ -181,16 +204,14 @@ def load_system_engines():
     sentiment_analyzer = SentimentAnalyzer()
     image_classifier = OptionalImageClassifier()
 
-    # Load Models
     tfidf_path = "models/tfidf_vectorizer.pkl"
     model_path = "models/tfidf_model.pkl"
     vectorizer = joblib.load(tfidf_path) if os.path.exists(tfidf_path) else None
     classifier = joblib.load(model_path) if os.path.exists(model_path) else None
 
-    # Load Benchmark Summary if available
     benchmark_data = None
     if os.path.exists("results/benchmark_summary.json"):
-        with open("results/benchmark_summary.json", "r") as f:
+        with open("results/benchmark_summary.json", "r", encoding="utf-8") as f:
             benchmark_data = json.load(f)
 
     return priority_engine, team_router, sentiment_analyzer, image_classifier, vectorizer, classifier, benchmark_data
@@ -200,6 +221,10 @@ priority_engine, team_router, sentiment_analyzer, image_classifier, vectorizer, 
 
 
 def initialize_demo_tickets():
+    persisted = load_tickets_from_disk()
+    if persisted is not None:
+        return persisted
+
     dataset_path = "data/processed/hostel_complaints_cleaned.csv"
     if not os.path.exists(dataset_path):
         dataset_path = "data/processed/test.csv"
@@ -242,6 +267,7 @@ def initialize_demo_tickets():
                     {"status": "TRIAGED", "timestamp": created_dt, "actor": "AI System", "note": f"Categorized as {cat} (Priority: {p_band})"}
                 ]
             })
+    save_tickets_to_disk(tickets)
     return tickets
 
 
@@ -312,7 +338,6 @@ if app_mode == "🏠 Resident Complaint Portal":
             if not description.strip() or not room.strip():
                 st.error("Please enter both the Room/Location and a clear Complaint Description.")
             else:
-                # 1. NLP Category Prediction
                 if classifier and vectorizer:
                     vec_in = vectorizer.transform([description])
                     raw_pred = classifier.predict(vec_in)[0]
@@ -325,14 +350,9 @@ if app_mode == "🏠 Resident Complaint Portal":
                     class_probs = {c: 0.2 for c in VALID_CATEGORIES}
 
                 pred_category = normalize_category(raw_pred)
-
-                # 2. Sentiment Analysis (Stored separately from physical risk)
                 sentiment_res = sentiment_analyzer.analyze(description)
-
-                # 3. Optional Image Classifier
                 img_res = image_classifier.classify_image(photo)
 
-                # 4. Priority Engine - Computes Importance, Risk, and Hazard Escalation automatically
                 priority_res = priority_engine.compute_priority(
                     category=pred_category,
                     description=description,
@@ -340,13 +360,17 @@ if app_mode == "🏠 Resident Complaint Portal":
                     impact_scope="Shared Room (2-4 Residents)"
                 )
 
-                # 5. Team Routing
                 route_res = team_router.route_complaint(pred_category, confidence)
                 assigned_crew = normalize_crew(route_res.get("assigned_team"), fallback_category=pred_category)
                 needs_review = bool(route_res.get("needs_warden_review", confidence < 0.60))
 
-                # Create Ticket
-                ticket_id = f"TCK-{20261000 + len(st.session_state['tickets']) + 1}"
+                existing_ids = {str(t.get("ticket_id", "")) for t in st.session_state["tickets"]}
+                seq_num = 20261000 + len(st.session_state["tickets"]) + 1
+                ticket_id = f"TCK-{seq_num}"
+                while ticket_id in existing_ids:
+                    seq_num += 1
+                    ticket_id = f"TCK-{seq_num}"
+
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 initial_status = "SUBMITTED" if needs_review else "ASSIGNED"
 
@@ -380,9 +404,9 @@ if app_mode == "🏠 Resident Complaint Portal":
                     ]
                 }
                 st.session_state["tickets"].insert(0, new_tck)
+                save_tickets_to_disk(st.session_state["tickets"])
                 st.success(f"Ticket Created Successfully! Tracking ID: **{ticket_id}**")
 
-                # Diagnostics Card
                 st.markdown("### 🎯 Real-Time AI Triage Diagnostics")
                 d1, d2, d3, d4 = st.columns(4)
                 d1.metric("Predicted Category", pred_category.replace("_", " ").title(), f"{confidence*100:.1f}% Conf")
@@ -397,7 +421,6 @@ if app_mode == "🏠 Resident Complaint Portal":
                 else:
                     st.info(f"✅ **Direct Dispatch:** Routed directly to **{DISPLAY_TEAM_NAMES.get(assigned_crew, assigned_crew)}** queue.")
 
-                # Class probability distribution chart
                 with st.expander("📊 View Model Softmax Class Probabilities", expanded=True):
                     prob_df = pd.DataFrame(list(class_probs.items()), columns=["Category", "Probability"])
                     prob_df["Category"] = prob_df["Category"].astype(str).str.replace("_", " ").str.title()
@@ -443,6 +466,7 @@ if app_mode == "🏠 Resident Complaint Portal":
                                 "actor": "Resident",
                                 "note": "Confirmed resolution"
                             })
+                            save_tickets_to_disk(st.session_state["tickets"])
                             set_flash(f"Ticket {match['ticket_id']} marked as CLOSED.", "success")
                             st.rerun()
                     with c_col2:
@@ -455,6 +479,7 @@ if app_mode == "🏠 Resident Complaint Portal":
                                 "actor": "Resident",
                                 "note": "Issue still present - reopened"
                             })
+                            save_tickets_to_disk(st.session_state["tickets"])
                             set_flash(f"Ticket {match['ticket_id']} reopened and returned to Maintenance queue.", "warning")
                             st.rerun()
             else:
@@ -486,7 +511,8 @@ elif app_mode == "🔧 Maintenance Staff Portal":
         st.success("All caught up! No open work orders assigned to this team.")
     else:
         status_options = ["TRIAGED", "ASSIGNED", "IN_PROGRESS", "ON_HOLD", "RESOLVED", "REOPENED"]
-        for tck in crew_tickets:
+        for idx, tck in enumerate(crew_tickets):
+            uid = f"{tck.get('ticket_id', 'TCK')}_{idx}"
             review_tag = " [Awaiting Warden Review]" if tck.get("needs_review") else ""
             with st.expander(
                 f"📌 [{tck['ticket_id']}] {tck['block']} - {tck['room']} ({tck['status']}{review_tag}) - Priority: {tck['priority_band']}",
@@ -507,24 +533,24 @@ elif app_mode == "🔧 Maintenance Staff Portal":
                         "Update Status",
                         status_options,
                         index=safe_index(status_options, tck["status"], 0),
-                        key=f"st_{tck['ticket_id']}"
+                        key=f"st_{uid}"
                     )
                 with act2:
                     note = st.text_input(
                         "Technician Action Log",
                         placeholder="e.g., Replaced ball valve in flush tank",
-                        key=f"nt_{tck['ticket_id']}"
+                        key=f"nt_{uid}"
                     )
                 with act3:
                     st.write("")
                     st.write("")
-                    if st.button("Update Work Order", key=f"up_{tck['ticket_id']}", type="primary"):
+                    if st.button("Update Work Order", key=f"up_{uid}", type="primary"):
                         tck["status"] = new_st
                         tck["assigned_team"] = sel_crew
                         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         if new_st == "RESOLVED":
                             tck["resolved_at"] = now_str
-                        elif new_st in ["IN_PROGRESS", "REOPENED", "ASSIGNED", "TRIAGED", "ON_HOLD"]:
+                        else:
                             tck["resolved_at"] = None
                         tck["history"].append({
                             "status": new_st,
@@ -532,6 +558,7 @@ elif app_mode == "🔧 Maintenance Staff Portal":
                             "actor": DISPLAY_TEAM_NAMES.get(sel_crew, "Technician"),
                             "note": note.strip() if note and note.strip() else f"Work order marked as {new_st}"
                         })
+                        save_tickets_to_disk(st.session_state["tickets"])
                         set_flash(f"Work order {tck['ticket_id']} updated to {new_st} in {DISPLAY_TEAM_NAMES.get(sel_crew, sel_crew)}.", "success")
                         st.rerun()
 
@@ -549,14 +576,12 @@ elif app_mode == "📊 Warden Operational Dashboard":
     else:
         df_tickets = pd.DataFrame(st.session_state["tickets"])
 
-        # 1. KPIs
         total_cnt = len(df_tickets)
         open_cnt = len(df_tickets[~df_tickets["status"].isin(["RESOLVED", "CLOSED"])])
         res_cnt = len(df_tickets[df_tickets["status"].isin(["RESOLVED", "CLOSED"])])
         reopen_cnt = len(df_tickets[df_tickets["status"] == "REOPENED"])
         needs_review = sum(1 for t in st.session_state["tickets"] if t.get("needs_review"))
 
-        # Compute resolution duration
         durations = []
         for t in st.session_state["tickets"]:
             if t.get("created_at") and t.get("resolved_at"):
@@ -580,7 +605,6 @@ elif app_mode == "📊 Warden Operational Dashboard":
 
         st.divider()
 
-        # 2. Charts
         ch1, ch2 = st.columns(2)
         with ch1:
             st.markdown("#### Complaints by Category")
@@ -609,7 +633,6 @@ elif app_mode == "📊 Warden Operational Dashboard":
 
         st.divider()
 
-        # 3. Hotspot Analysis
         st.markdown("#### 🏢 Building & Floor Hotspot Matrix (Systemic Fault Detection)")
         st.caption("Cross-tabulates complaints across hostel blocks and categories to identify recurring infrastructure issues.")
         hotspot = df_tickets.groupby(["block", "category"]).size().reset_index(name="count")
@@ -618,7 +641,6 @@ elif app_mode == "📊 Warden Operational Dashboard":
 
         st.divider()
 
-        # 4. Low-Confidence Warden Override
         st.markdown("#### 🛡️ Low-Confidence Verification & Warden Override Queue")
         flagged = [t for t in st.session_state["tickets"] if t.get("needs_review")]
 
@@ -627,7 +649,8 @@ elif app_mode == "📊 Warden Operational Dashboard":
         else:
             st.warning(f"⚠️ **{len(flagged)} complaints** require warden administrative approval and dispatch.")
             priority_bands = ["High", "Medium", "Low"]
-            for fl in flagged:
+            for idx, fl in enumerate(flagged):
+                uid = f"{fl.get('ticket_id', 'TCK')}_{idx}"
                 cur_cat = normalize_category(fl.get("category"))
                 cur_crew = normalize_crew(fl.get("assigned_team"), fallback_category=cur_cat)
                 with st.expander(
@@ -641,34 +664,34 @@ elif app_mode == "📊 Warden Operational Dashboard":
                         f"**Current Status:** `{fl['status']}`"
                     )
 
-                    with st.form(f"ovr_{fl['ticket_id']}"):
+                    with st.form(f"ovr_{uid}"):
                         o1, o2, o3 = st.columns(3)
                         with o1:
                             over_c = st.selectbox(
                                 "Assign Category",
                                 VALID_CATEGORIES,
                                 index=safe_index(VALID_CATEGORIES, cur_cat, 4),
-                                key=f"fc_{fl['ticket_id']}"
+                                key=f"fc_{uid}"
                             )
                         with o2:
                             over_tm = st.selectbox(
                                 "Dispatch Crew",
                                 VALID_CREWS,
                                 index=safe_index(VALID_CREWS, cur_crew, 4),
-                                key=f"ft_{fl['ticket_id']}"
+                                key=f"ft_{uid}"
                             )
                         with o3:
                             over_pb = st.selectbox(
                                 "Priority Band",
                                 priority_bands,
                                 index=safe_index(priority_bands, fl.get("priority_band", "Medium"), 1),
-                                key=f"fp_{fl['ticket_id']}"
+                                key=f"fp_{uid}"
                             )
 
                         reason = st.text_input(
                             "Administrative Justification",
                             value="Verified manually by Warden",
-                            key=f"fr_{fl['ticket_id']}"
+                            key=f"fr_{uid}"
                         )
                         ovr_btn = st.form_submit_button("Confirm Override & Dispatch", type="primary")
 
@@ -690,8 +713,9 @@ elif app_mode == "📊 Warden Operational Dashboard":
                             "actor": "Hostel Warden",
                             "note": f"Warden Override & Dispatch: {reason.strip() or 'Approved'} (Category: {final_cat}, Crew: {DISPLAY_TEAM_NAMES.get(final_crew, final_crew)}, Priority: {over_pb})"
                         })
+                        save_tickets_to_disk(st.session_state["tickets"])
                         set_flash(
-                            f"Ticket {fl['ticket_id']} overridden and dispatched to {DISPLAY_TEAM_NAMES.get(final_crew, final_crew)} ({over_pb} Priority).",
+                            f"Ticket {fl['ticket_id']} dispatched to {DISPLAY_TEAM_NAMES.get(final_crew, final_crew)} ({over_pb} Priority). Select '{DISPLAY_TEAM_NAMES.get(final_crew, final_crew)}' in Maintenance Staff Portal to view it.",
                             "success"
                         )
                         st.rerun()
@@ -704,7 +728,6 @@ elif app_mode == "🧠 Model Benchmarks & AI Hub":
     st.markdown('<div class="main-header">Machine Learning Engineering & Benchmarks</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Evaluation metrics, training convergence curves, mathematical formulations, and live classifier simulator.</div>', unsafe_allow_html=True)
 
-    # 1. Model Comparison Table
     st.markdown("### 🏆 Architectural Benchmark Comparison")
     st.markdown("All architectures evaluated on the identical held-out test split (450 stratified test records):")
 
@@ -721,7 +744,6 @@ elif app_mode == "🧠 Model Benchmarks & AI Hub":
 
     st.divider()
 
-    # 2. Training Learning Curves & Confusion Matrix
     st.markdown("### 📈 Neural Network Learning Convergence & Confusion Matrix")
     st.caption("Epoch-by-epoch loss reduction and accuracy convergence for custom PyTorch BiLSTM on Apple Silicon MPS:")
 
@@ -740,7 +762,6 @@ elif app_mode == "🧠 Model Benchmarks & AI Hub":
 
     st.divider()
 
-    # 3. Mathematical Formulation & Priority Logic
     st.markdown("### 🧮 Mathematical Priority Formulation")
     st.markdown("The system calculates priority via a weighted linear multi-attribute utility model:")
 
@@ -759,7 +780,6 @@ elif app_mode == "🧠 Model Benchmarks & AI Hub":
 - **Low Priority** ($P < 40$): Target SLA $\le 72$ hours.
     """)
 
-    # Interactive Priority Simulator
     with st.expander("🎛️ Interactive Priority Formula Simulator", expanded=False):
         s1, s2, s3, s4 = st.columns(4)
         with s1:
@@ -777,7 +797,6 @@ elif app_mode == "🧠 Model Benchmarks & AI Hub":
 
     st.divider()
 
-    # 4. Live Classifier Playground
     st.markdown("### 🧪 Live NLP Classifier & Softmax Probability Simulator")
     st.caption("Test the model with any custom or complex complaint text in real-time:")
 
