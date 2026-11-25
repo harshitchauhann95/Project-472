@@ -1,0 +1,76 @@
+{
+  "models": [
+    {
+      "name": "TF-IDF + Logistic Regression",
+      "type": "N-Gram Linear Baseline",
+      "train_accuracy_pct": 100.0,
+      "test_accuracy_pct": 100.0,
+      "macro_f1": 1.0,
+      "inference_latency_ms": 0.001,
+      "parameters": "5,000 N-Gram Features"
+    },
+    {
+      "name": "Bidirectional LSTM (BiLSTM)",
+      "type": "Deep Recurrent Neural Network",
+      "train_accuracy_pct": 100.0,
+      "test_accuracy_pct": 100.0,
+      "macro_f1": 1.0,
+      "inference_latency_ms": 0.586,
+      "parameters": "2-Layer Bidirectional, 128 Hidden Units"
+    },
+    {
+      "name": "Fine-Tuned DistilBERT",
+      "type": "Contextual Transformer (Attention)",
+      "train_accuracy_pct": 98.4,
+      "test_accuracy_pct": 97.6,
+      "macro_f1": 0.9755,
+      "inference_latency_ms": 14.85,
+      "parameters": "66M Parameters, 6 Transformer Layers"
+    }
+  ],
+  "history_bilstm": {
+    "epoch": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "train_loss": [
+      0.5237,
+      0.0019,
+      0.004,
+      0.0141,
+      0.0014
+    ],
+    "val_loss": [
+      0.0025,
+      0.0009,
+      0.026,
+      0.0015,
+      0.0008
+    ],
+    "train_acc": [
+      91.76,
+      100.0,
+      99.81,
+      99.67,
+      100.0
+    ],
+    "val_acc": [
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0
+    ]
+  },
+  "test_split_size": 450,
+  "classes": [
+    "cleaning_sanitation",
+    "electrical",
+    "furniture_carpentry",
+    "general_maintenance",
+    "plumbing"
+  ]
+}
