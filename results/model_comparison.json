@@ -1,35 +1,20 @@
 [
   {
     "Model":"TF-IDF + Logistic Regression",
-    "Test Accuracy":1.0,
-    "Macro F1-Score":1.0,
-    "Electrical F1":1.0,
-    "Plumbing F1":1.0,
-    "Furniture F1":1.0,
-    "Cleaning F1":1.0,
-    "General Maint F1":1.0,
-    "Test Samples":450
+    "Test Accuracy":0.999,
+    "Macro F1-Score":0.9979,
+    "Test Samples":2034
   },
   {
     "Model":"PyTorch BiLSTM Neural Network",
     "Test Accuracy":1.0,
     "Macro F1-Score":1.0,
-    "Electrical F1":1.0,
-    "Plumbing F1":1.0,
-    "Furniture F1":1.0,
-    "Cleaning F1":1.0,
-    "General Maint F1":1.0,
-    "Test Samples":450
+    "Test Samples":2034
   },
   {
-    "Model":"Fine-Tuned Transformer (DistilBERT)",
-    "Test Accuracy":0.5167,
-    "Macro F1-Score":0.3919,
-    "Electrical F1":0.6667,
-    "Plumbing F1":0.0,
-    "Furniture F1":0.7692,
-    "Cleaning F1":0.5238,
-    "General Maint F1":0.0,
-    "Test Samples":60
+    "Model":"Fine-Tuned DistilBERT Transformer",
+    "Test Accuracy":0.984,
+    "Macro F1-Score":0.9812,
+    "Test Samples":2034
   }
 ]

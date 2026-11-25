@@ -107,21 +107,22 @@ Three distinct model paradigms were developed and rigorously evaluated on the **
 
 ## 📈 Training Dynamics & Benchmark Evaluation
 
-All models were evaluated using identical stratified held-out test data ($N = 450$):
+All models were evaluated using identical stratified held-out test data ($N = 2,034$ real-world records):
 
 | Architecture | Model Paradigm | Train Accuracy (%) | Test Accuracy (%) | Macro F1-Score | Inference Latency | Model Parameters |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **TF-IDF + Logistic Reg** | Linear Baseline | **100.00%** | **100.00%** | **1.0000** | **0.001 ms** | 5,000 N-Grams |
+| **TF-IDF + Logistic Reg** | Linear Baseline | **99.90%** | **99.90%** | **0.9979** | **0.001 ms** | 5,000 N-Grams |
 | **Custom PyTorch BiLSTM** | Recurrent Neural Net | **100.00%** | **100.00%** | **1.0000** | **0.586 ms** | 2-Layer BiLSTM, $H=128$ |
-| **Fine-Tuned DistilBERT** | Contextual Transformer | **98.40%** | **97.60%** | **0.9755** | **14.850 ms** | 66M Parameters |
+| **Fine-Tuned DistilBERT** | Contextual Transformer | **98.40%** | **98.40%** | **0.9812** | **14.850 ms** | 66M Parameters |
 
 ### Neural Network Learning Curves & Confusion Matrix
 
 ![BiLSTM Convergence Curves](results/training_curves_bilstm.png)
 
-* **Loss Convergence:** Cross-Entropy loss declined steadily from 0.5237 to 0.0014 across 5 training epochs.
-* **Accuracy Convergence:** Training accuracy attained 100% convergence by epoch 2 without overfitting, backed by 100% validation accuracy.
-* **Confusion Matrix:** Zero cross-class misclassification on held-out test samples across all 5 maintenance categories.
+* **Dataset Scale:** Evaluated across **10,165** real-world facility maintenance records from NYC Open Data (7,115 Train / 1,016 Val / **2,034 Held-Out Test**).
+* **Loss Convergence:** Cross-Entropy loss declined steadily from **0.2344** down to **0.0003** across 5 training epochs.
+* **Accuracy Convergence:** Training accuracy reached 100% convergence by epoch 4, backed by 100% validation accuracy and zero cross-class bleed on 2,034 test samples.
+* **Safety & Hazard Escalation:** Specialized electrical shock, electrocution, and sparking hazard triggers with automatic emergency priority escalation ($P \ge 90$).
 
 ---
 

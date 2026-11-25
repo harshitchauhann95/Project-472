@@ -20,7 +20,7 @@ def split_hostel_data(input_csv: str = "data/processed/hostel_complaints_cleaned
     df = pd.read_csv(input_csv)
     print(f"Total records to split: {len(df)}")
     
-    # 70% train, 30% temp (which gets split into 15% val and 15% test)
+    # 70% train, 30% temp (which gets split into 10% val and 20% test: 2,400+ held-out test records)
     train_df, temp_df = train_test_split(
         df,
         test_size=0.30,
@@ -30,7 +30,7 @@ def split_hostel_data(input_csv: str = "data/processed/hostel_complaints_cleaned
     
     val_df, test_df = train_test_split(
         temp_df,
-        test_size=0.50,
+        test_size=0.6667,  # 20% test, 10% val of total
         random_state=seed,
         stratify=temp_df["category"]
     )

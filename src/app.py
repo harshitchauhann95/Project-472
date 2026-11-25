@@ -193,37 +193,31 @@ if app_mode == "🏠 Resident Complaint Portal":
     
     with tab1:
         with st.form("new_complaint_form"):
-            st.markdown("#### 1. Incident Location & Scope")
+            st.markdown("#### 📍 Incident Location")
             c1, c2, c3 = st.columns(3)
             with c1:
                 block = st.selectbox("Hostel Block", ["Block A", "Block B", "Block C", "Block D"])
             with c2:
                 floor = st.selectbox("Floor", ["Ground Floor", "Floor 1", "Floor 2", "Floor 3", "Floor 4"])
             with c3:
-                room = st.text_input("Room / Facility ID", placeholder="e.g., Room 304, Common Washroom")
+                room = st.text_input("Room / Facility Location", placeholder="e.g., Room 204, Floor 2 Washroom")
                 
-            st.markdown("#### 2. Urgency & Impact Perception")
-            u1, u2 = st.columns(2)
-            with u1:
-                resident_urgency = st.selectbox("Resident-Reported Urgency", ["Emergency", "High", "Medium", "Low"], index=2)
-            with u2:
-                impact_scope = st.selectbox("Impact Scope", ["Single Resident Room", "Shared Room (2-4 Residents)", "Common Area / Floor Washroom / Mess", "Hostel / Entire Wing"], index=1)
-                
-            st.markdown("#### 3. Complaint Description")
+            st.markdown("#### 💬 Issue Statement / Description")
+            st.caption("Simply describe what happened in your own words. The AI will automatically analyze the category, severity, and urgency.")
             description = st.text_area(
-                "Describe the issue clearly",
-                placeholder="e.g., MCB switch tripping every 15 minutes causing complete power blackout in room, sparks visible.",
-                height=90
+                "Describe the problem",
+                placeholder="e.g., One student got shocked while touching the iron desk switch, or water pipe burst flooding the washroom floor...",
+                height=100
             )
-            photo = st.file_uploader("Upload Problem Photo (Optional)", type=["png", "jpg", "jpeg"])
+            photo = st.file_uploader("Upload Incident Photo (Optional - Vision branch will process if attached)", type=["png", "jpg", "jpeg"])
             
-            submit_btn = st.form_submit_button("Submit Complaint & Run AI Triage", use_container_width=True)
+            submit_btn = st.form_submit_button("🚀 Submit Complaint & Trigger AI Triage", use_container_width=True)
             
         if submit_btn:
             if not description.strip() or not room.strip():
-                st.error("Please fill in both the Room/Location and a clear Complaint Description.")
+                st.error("Please enter both the Room/Location and a clear Complaint Description.")
             else:
-                # 1. Run Classification
+                # 1. NLP Category Prediction
                 if classifier and vectorizer:
                     vec_in = vectorizer.transform([description])
                     pred_category = classifier.predict(vec_in)[0]
@@ -241,12 +235,12 @@ if app_mode == "🏠 Resident Complaint Portal":
                 # 3. Optional Image Classifier
                 img_res = image_classifier.classify_image(photo)
                 
-                # 4. Priority Engine
+                # 4. Priority Engine - Computes Importance, Risk, and Hazard Escalation automatically
                 priority_res = priority_engine.compute_priority(
                     category=pred_category,
                     description=description,
-                    resident_urgency=resident_urgency,
-                    impact_scope=impact_scope
+                    resident_urgency="Medium",
+                    impact_scope="Shared Room (2-4 Residents)"
                 )
                 
                 # 5. Team Routing

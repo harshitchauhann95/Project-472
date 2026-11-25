@@ -3,10 +3,10 @@
     {
       "name": "TF-IDF + Logistic Regression",
       "type": "N-Gram Linear Baseline",
-      "train_accuracy_pct": 100.0,
-      "test_accuracy_pct": 100.0,
-      "macro_f1": 1.0,
-      "inference_latency_ms": 0.001,
+      "train_accuracy_pct": 99.89,
+      "test_accuracy_pct": 99.9,
+      "macro_f1": 0.9979,
+      "inference_latency_ms": 0.0,
       "parameters": "5,000 N-Gram Features"
     },
     {
@@ -15,7 +15,7 @@
       "train_accuracy_pct": 100.0,
       "test_accuracy_pct": 100.0,
       "macro_f1": 1.0,
-      "inference_latency_ms": 0.586,
+      "inference_latency_ms": 0.571,
       "parameters": "2-Layer Bidirectional, 128 Hidden Units"
     },
     {
@@ -37,35 +37,35 @@
       5
     ],
     "train_loss": [
-      0.5237,
-      0.0019,
+      0.2344,
+      0.0117,
       0.004,
-      0.0141,
-      0.0014
+      0.0005,
+      0.0003
     ],
     "val_loss": [
+      0.0222,
       0.0025,
-      0.0009,
-      0.026,
-      0.0015,
-      0.0008
+      0.0006,
+      0.0003,
+      0.0002
     ],
     "train_acc": [
-      91.76,
+      91.43,
+      99.73,
+      99.92,
       100.0,
-      99.81,
-      99.67,
       100.0
     ],
     "val_acc": [
-      100.0,
+      99.51,
       100.0,
       100.0,
       100.0,
       100.0
     ]
   },
-  "test_split_size": 450,
+  "test_split_size": 2034,
   "classes": [
     "cleaning_sanitation",
     "electrical",

@@ -1,6 +1,6 @@
 """
 Priority Scoring Engine
-Computes transparent priority score based on Formula (1) & (2) from Smart_Hostel_Report_File.pdf:
+Computes transparent priority score based on multi-parameter utility formula:
   P = 0.35*C + 0.30*U + 0.20*R + 0.15*I  (0–100 scale)
   P_band = High (P >= 75), Medium (40 <= P < 75), Low (P < 40)
 
@@ -9,8 +9,8 @@ Features:
 - Urgency Cue Strength (U) from text signals
 - Resident-Selected Urgency (R)
 - Impact Scope (I)
-- Automatic Hazard Escalation Override (active danger/fire/sparking)
-- Warden Override Support
+- Comprehensive Safety Hazard Override: Catches shock, electrocution, sparking, fire, gas, bursting
+- Human-in-the-Loop Warden Override
 """
 
 import re
@@ -18,7 +18,7 @@ from typing import Dict, Any, Optional
 
 # Default category risk weights (0-100 scale)
 CATEGORY_RISK_MAP = {
-    "electrical": 85,
+    "electrical": 90,
     "plumbing": 70,
     "cleaning_sanitation": 45,
     "furniture_carpentry": 40,
@@ -42,10 +42,19 @@ IMPACT_SCOPE_MAP = {
     "Single Resident Room": 25
 }
 
-# Immediate safety hazard keywords that trigger rule-based escalation
+# Critical Life-Safety & Hazard Keywords
+# Any mention of these terms MUST automatically trigger High Priority (>=90)
 HAZARD_KEYWORDS = [
-    "spark", "sparking", "smoke", "fire", "live wire", "burst pipe",
-    "electric shock", "gas smell", "burning", "ceiling collapse", "flooding room"
+    # Electrical hazard & shock signals
+    "shock", "shocked", "shocks", "shocking", "electric shock", "electrocuted", "electrocution",
+    "earthing", "earthing fault", "current", "current coming", "got shock", "got shocked",
+    "spark", "sparking", "sparks", "smoke", "fire", "flame", "burning", "burnt smell",
+    "short circuit", "live wire", "exposed wire", "open wire", "wire sparking",
+    "high voltage", "power surge", "mcb explosion", "socket blast",
+    # Plumbing hazard signals
+    "burst pipe", "pipe burst", "flooding", "water flooding", "sewage overflow",
+    # Structural & Gas hazard signals
+    "ceiling collapse", "balcony broken", "gas leak", "gas smell", "cylinder leak"
 ]
 
 
@@ -70,16 +79,19 @@ class PriorityEngine:
         lower_t = text.lower()
         detected_cues = []
         
-        # Hazard cues (Score 95)
+        # 1. Critical Safety Hazards (Score 95-100)
         for hk in HAZARD_KEYWORDS:
-            if hk in lower_t:
+            if re.search(r'\b' + re.escape(hk) + r'\b', lower_t) or hk in lower_t:
                 detected_cues.append(hk)
                 
         if detected_cues:
             return 95, detected_cues
             
-        # High urgency cues (Score 75)
-        high_cues = ["leak", "leaking", "overflow", "not working", "jammed", "choked", "dark", "urgent", "broken"]
+        # 2. High Urgency Cues (Score 75)
+        high_cues = [
+            "leak", "leaking", "overflow", "not working", "jammed", "choked", "clogged",
+            "dark", "pitch dark", "urgent", "immediately", "broken", "severe", "tripping"
+        ]
         for hc in high_cues:
             if re.search(r'\b' + re.escape(hc) + r'\b', lower_t):
                 detected_cues.append(hc)
@@ -87,8 +99,8 @@ class PriorityEngine:
         if detected_cues:
             return 75, detected_cues
             
-        # Medium urgency cues (Score 50)
-        med_cues = ["loose", "intermittent", "noisy", "rattling", "flicker", "slow", "blinking"]
+        # 3. Medium Urgency Cues (Score 50)
+        med_cues = ["loose", "intermittent", "noisy", "rattling", "flicker", "slow", "blinking", "creaking"]
         for mc in med_cues:
             if re.search(r'\b' + re.escape(mc) + r'\b', lower_t):
                 detected_cues.append(mc)
@@ -137,23 +149,31 @@ class PriorityEngine:
         # 4. Impact Scope (I)
         i_score = IMPACT_SCOPE_MAP.get(impact_scope, 50)
         
-        # Formula: P = 0.35*C + 0.30*U + 0.20*R + 0.15*I
-        raw_score = (self.w_c * c_score) + (self.w_u * u_score) + (self.w_r * r_score) + (self.w_i * i_score)
-        p_score = int(round(raw_score))
-        p_score = max(5, min(100, p_score))
-        
-        # Safety hazard rule escalation
+        # Safety hazard rule escalation check
         hazard_triggered = False
         hazard_reason = None
         lower_desc = description.lower()
+        
         for hk in HAZARD_KEYWORDS:
-            if hk in lower_desc:
+            if re.search(r'\b' + re.escape(hk) + r'\b', lower_desc) or hk in lower_desc:
                 hazard_triggered = True
-                hazard_reason = f"Safety rule escalation: detected critical hazard cue '{hk}'"
-                if p_score < 80:
-                    p_score = 85
+                hazard_reason = f"CRITICAL SAFETY ESCALATION: Detected active hazard '{hk}'"
+                # If hazard is active, category risk for life safety is bumped
+                if "shock" in hk or "electrocuted" in hk or "earthing" in hk or "spark" in hk or "wire" in hk or "current" in hk:
+                    c_score = max(c_score, 90)
+                u_score = 95
                 break
                 
+        # Formula: P = 0.35*C + 0.30*U + 0.20*R + 0.15*I
+        raw_score = (self.w_c * c_score) + (self.w_u * u_score) + (self.w_r * r_score) + (self.w_i * i_score)
+        p_score = int(round(raw_score))
+        
+        # If active hazard is detected, priority MUST NEVER drop below 90
+        if hazard_triggered:
+            p_score = max(p_score, 90)
+            
+        p_score = max(5, min(100, p_score))
+        
         # Band determination: High (>=75), Medium (40-74), Low (<40)
         if p_score >= 75:
             band = "High"
@@ -176,16 +196,3 @@ class PriorityEngine:
             "hazard_reason": hazard_reason,
             "override_applied": False
         }
-
-
-# Module self-test
-if __name__ == "__main__":
-    engine = PriorityEngine()
-    test_cases = [
-        ("electrical", "Ceiling fan sparking violently and smelling like burnt plastic", "Emergency", "Shared Room (2-4 Residents)"),
-        ("plumbing", "Tap dripping small drops in corner washbasin", "Low", "Single Resident Room"),
-        ("furniture_carpentry", "Study chair backrest cracked", "Medium", "Single Resident Room")
-    ]
-    for cat, text, urg, imp in test_cases:
-        res = engine.compute_priority(cat, text, urg, imp)
-        print(f"[{cat.upper()}] P={res['priority_score']} ({res['priority_band']}) | Escalated: {res['hazard_escalation']}")
