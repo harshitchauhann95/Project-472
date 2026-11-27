@@ -109,14 +109,11 @@ Three distinct model paradigms were developed and rigorously evaluated on the **
 
 All models were evaluated using identical stratified held-out test data ($N = 2,034$ real-world records):
 
-| Architecture | Model Paradigm | Test Accuracy (%) | Macro F1-Score | Inference Latency | Model Parameters |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **TF-IDF + Logistic Reg (Sentiment)** | Linear Baseline | **63.6%** | **0.389** | **0.003 ms** | 3,000 N-Grams |
-| **Bidirectional LSTM (BiLSTM) (Sentiment)** | Recurrent Neural Net | **63.6%** | **0.542** | **4.5 ms** | 1-Layer BiLSTM, 64 Hidden |
-| **Fine-Tuned DistilBERT (Sentiment)** | Contextual Transformer | **77.3%** | **0.575** | **26.8 ms** | 66M Params |
-| **TF-IDF + Logistic Reg (Category)** | Linear Baseline | **100.0%** | **1.0** | **0.002 ms** | 3,000 N-Grams |
-| **Bidirectional LSTM (BiLSTM) (Category)** | Recurrent Neural Net | **100.0%** | **1.0** | **1.3 ms** | 1-Layer BiLSTM, 64 Hidden |
-| **Fine-Tuned DistilBERT (Category)** | Contextual Transformer | **95.5%** | **0.821** | **26.8 ms** | 66M Params |
+| Model | Test Accuracy |
+| :--- | :---: |
+| **TF-IDF + Logistic Reg (Sentiment)** | **63.6 %** |
+| **Bidirectional LSTM (BiLSTM) (Sentiment)** | **63.6 %** |
+| **Fine-Tuned DistilBERT (Sentiment)** | **77.3 %** |
 
 ### Neural Network Learning Curves & Confusion Matrix
 
