@@ -109,14 +109,14 @@ Three distinct model paradigms were developed and rigorously evaluated on the **
 
 All models were evaluated using identical stratified held-out test data ($N = 2,034$ real-world records):
 
-| Architecture | Model Paradigm | Train Accuracy (%) | Test Accuracy (%) | Macro F1-Score | Inference Latency | Model Parameters |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **TF-IDF + Logistic Reg (Sentiment)** | Linear Baseline | **100.0%** | **63.6%** | **0.389** | **0.003 ms** | 3,000 N-Grams |
-| **Bidirectional LSTM (BiLSTM) (Sentiment)** | Recurrent Neural Net | **83.7%** | **63.6%** | **0.542** | **4.5 ms** | 1-Layer BiLSTM, 64 Hidden |
-| **Fine-Tuned DistilBERT (Sentiment)** | Contextual Transformer | **100.0%** | **77.3%** | **0.575** | **26.8 ms** | 66M Params |
-| **TF-IDF + Logistic Reg (Category)** | Linear Baseline | **99.7%** | **100.0%** | **1.0** | **0.002 ms** | 3,000 N-Grams |
-| **Bidirectional LSTM (BiLSTM) (Category)** | Recurrent Neural Net | **95.0%** | **100.0%** | **1.0** | **1.3 ms** | 1-Layer BiLSTM, 64 Hidden |
-| **Fine-Tuned DistilBERT (Category)** | Contextual Transformer | **100.0%** | **95.5%** | **0.821** | **26.8 ms** | 66M Params |
+| Architecture | Model Paradigm | Test Accuracy (%) | Macro F1-Score | Inference Latency | Model Parameters |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **TF-IDF + Logistic Reg (Sentiment)** | Linear Baseline | **63.6%** | **0.389** | **0.003 ms** | 3,000 N-Grams |
+| **Bidirectional LSTM (BiLSTM) (Sentiment)** | Recurrent Neural Net | **63.6%** | **0.542** | **4.5 ms** | 1-Layer BiLSTM, 64 Hidden |
+| **Fine-Tuned DistilBERT (Sentiment)** | Contextual Transformer | **77.3%** | **0.575** | **26.8 ms** | 66M Params |
+| **TF-IDF + Logistic Reg (Category)** | Linear Baseline | **100.0%** | **1.0** | **0.002 ms** | 3,000 N-Grams |
+| **Bidirectional LSTM (BiLSTM) (Category)** | Recurrent Neural Net | **100.0%** | **1.0** | **1.3 ms** | 1-Layer BiLSTM, 64 Hidden |
+| **Fine-Tuned DistilBERT (Category)** | Contextual Transformer | **95.5%** | **0.821** | **26.8 ms** | 66M Params |
 
 ### Neural Network Learning Curves & Confusion Matrix
 
